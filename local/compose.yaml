@@ -1,0 +1,274 @@
+# The whole company on one machine: LocalStack (started by `lstk start`) for the AWS
+# business/state planes, the Company MCP and the seven Hermes employees as containers.
+# Bedrock is real AWS. See README.md in this directory.
+
+name: agentes-sas
+
+x-localstack-client: &localstack-client
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_ENDPOINT_URL: ${LOCALSTACK_ENDPOINT:-http://host.docker.internal:4566}
+
+x-mcp-proxy: &mcp-proxy
+  image: agentes-sas/company-mcp:local
+  build: ../services/company-mcp
+  profiles: [agents]
+  command: ["company-mcp-proxy"]
+  restart: unless-stopped
+  depends_on:
+    company-mcp: { condition: service_healthy }
+
+x-proxy-env: &proxy-env
+  SIGNING_MODE: header
+  UPSTREAM_URL: http://company-mcp:8080
+
+x-agent: &agent
+  image: agentes-sas/agent:local
+  build:
+    context: ../agents
+    # The agent image also carries the Company MCP's signing proxy (used in ECS Express Mode).
+    additional_contexts:
+      company-mcp: ../services/company-mcp
+  profiles: [agents]   # the employees call Bedrock: start them with --profile agents
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: true
+  volumes:
+    - ../prompts:/prompts:ro
+    # Real AWS credentials for Bedrock only, written by ./aws-credentials.sh. A directory (not a
+    # file) is mounted so refreshed credentials are picked up by the next turn without a restart.
+    - ./.aws-agent:/aws:ro
+
+x-agent-env: &agent-env
+  AWS_REGION: us-east-1
+  QUEUE_ENDPOINT_URL: ${LOCALSTACK_ENDPOINT:-http://host.docker.internal:4566}
+  COMPANY_MCP_URL: http://127.0.0.1:9000/mcp
+  PROMPT_SOURCE: file
+  LOG_LEVEL: INFO
+  AGENT_ACTIVITY_URL: http://agent-activity:8113
+  AWS_SHARED_CREDENTIALS_FILE: /aws/credentials
+
+services:
+  # Same Terraform modules and org chart as AWS (infrastructure/local).
+  infra:
+    image: hashicorp/terraform:1.15.6
+    working_dir: /repo/infrastructure/local
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        wget -qO /dev/null "$$LOCALSTACK_ENDPOINT/_localstack/health" ||
+        { echo "LocalStack is not reachable at $$LOCALSTACK_ENDPOINT - run 'lstk start' first"; exit 1; };
+        mkdir -p /tfdata/plugins &&
+        terraform init -input=false -reconfigure -backend-config=path=/tfdata/terraform.tfstate &&
+        terraform apply -input=false -auto-approve -var localstack_endpoint=$$LOCALSTACK_ENDPOINT
+    environment:
+      LOCALSTACK_ENDPOINT: ${LOCALSTACK_ENDPOINT:-http://host.docker.internal:4566}
+      TF_DATA_DIR: /tfdata/.terraform
+      TF_PLUGIN_CACHE_DIR: /tfdata/plugins
+    volumes:
+      - ..:/repo
+      - tfdata:/tfdata
+
+  seed:
+    image: agentes-sas/company-mcp:local
+    build: ../services/company-mcp
+    command: ["company-mcp-seed"]
+    environment:
+      <<: *localstack-client
+      TABLE_NAME: agentes-sas-local-company
+    depends_on:
+      infra: { condition: service_completed_successfully }
+
+  company-mcp:
+    image: agentes-sas/company-mcp:local
+    build: ../services/company-mcp
+    ports: ["8080:8080"]
+    environment:
+      <<: *localstack-client
+      TABLE_NAME: agentes-sas-local-company
+      EVENT_BUS_NAME: agentes-sas-local-business
+      COMPANY_BUCKET: agentes-sas-local-company
+      AUTH_MODE: header   # no real STS locally; the proxies send X-Agent-Id
+      LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 5s
+      retries: 20
+    depends_on:
+      seed: { condition: service_completed_successfully }
+
+  # Live activity of every employee (turns, tool calls, delegation, escalation), per order; Nexo reads it.
+  agent-activity:
+    image: agentes-sas/agent-activity:local
+    build: ../services/agent-activity
+    ports: ["127.0.0.1:8113:8113"]
+    environment:
+      ACTIVITY_LOG_EVENTS: ${ACTIVITY_LOG_EVENTS:-0}   # 1 = log every received event (debugging)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8113/health', timeout=3)"]
+      interval: 5s
+      retries: 10
+
+  # Browser view of the Company MCP (official MCP Inspector): one connection per employee, each
+  # sending its X-Agent-Id, so you can act as any of them. Open the link printed in its logs.
+  mcp-inspector:
+    image: ghcr.io/modelcontextprotocol/inspector:2.10.1
+    profiles: [inspector]
+    command: ["--web", "--config", "/config/mcp.json"]
+    environment:
+      # Optional fixed access token (set in .env); otherwise a new one is printed at each start.
+      MCP_INSPECTOR_API_TOKEN: ${MCP_INSPECTOR_API_TOKEN:-}
+    ports: ["127.0.0.1:6274:6274"]
+    volumes:
+      - ./inspector/mcp.json:/config/mcp.json:ro
+    depends_on:
+      company-mcp: { condition: service_healthy }
+
+  # Each employee = an agent container plus its mcp-proxy, sharing one network namespace
+  # (like containers in one ECS task). Hermes calls http://127.0.0.1:9000/mcp.
+
+  mcp-proxy-ceo:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: ceo
+
+  agent-ceo:
+    <<: *agent
+    network_mode: service:mcp-proxy-ceo
+    environment:
+      <<: *agent-env
+      AGENT_ID: ceo
+      AGENT_ROLE: CEO
+      DEPARTMENT: executive
+      REPORTS_TO: ""
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-ceo
+      PROMPT_FILE: /prompts/ceo.yaml
+    depends_on:
+      mcp-proxy-ceo: { condition: service_started }
+
+  mcp-proxy-commercial-manager:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: commercial-manager
+
+  agent-commercial-manager:
+    <<: *agent
+    network_mode: service:mcp-proxy-commercial-manager
+    environment:
+      <<: *agent-env
+      AGENT_ID: commercial-manager
+      AGENT_ROLE: Commercial Manager
+      DEPARTMENT: commercial
+      REPORTS_TO: "ceo"
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-commercial-manager
+      PROMPT_FILE: /prompts/commercial/manager.yaml
+    depends_on:
+      mcp-proxy-commercial-manager: { condition: service_started }
+
+  mcp-proxy-sales-rep:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: sales-rep
+
+  agent-sales-rep:
+    <<: *agent
+    network_mode: service:mcp-proxy-sales-rep
+    environment:
+      <<: *agent-env
+      AGENT_ID: sales-rep
+      AGENT_ROLE: Sales Rep
+      DEPARTMENT: commercial
+      REPORTS_TO: "commercial-manager"
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-sales-rep
+      PROMPT_FILE: /prompts/commercial/sales-rep.yaml
+    depends_on:
+      mcp-proxy-sales-rep: { condition: service_started }
+
+  mcp-proxy-operations-manager:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: operations-manager
+
+  agent-operations-manager:
+    <<: *agent
+    network_mode: service:mcp-proxy-operations-manager
+    environment:
+      <<: *agent-env
+      AGENT_ID: operations-manager
+      AGENT_ROLE: Operations Manager
+      DEPARTMENT: operations
+      REPORTS_TO: "ceo"
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-operations-manager
+      PROMPT_FILE: /prompts/operations/manager.yaml
+    depends_on:
+      mcp-proxy-operations-manager: { condition: service_started }
+
+  mcp-proxy-fulfillment:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: fulfillment
+
+  agent-fulfillment:
+    <<: *agent
+    network_mode: service:mcp-proxy-fulfillment
+    environment:
+      <<: *agent-env
+      AGENT_ID: fulfillment
+      AGENT_ROLE: Fulfillment
+      DEPARTMENT: operations
+      REPORTS_TO: "operations-manager"
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-fulfillment
+      PROMPT_FILE: /prompts/operations/fulfillment.yaml
+    depends_on:
+      mcp-proxy-fulfillment: { condition: service_started }
+
+  mcp-proxy-accounting-manager:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: accounting-manager
+
+  agent-accounting-manager:
+    <<: *agent
+    network_mode: service:mcp-proxy-accounting-manager
+    environment:
+      <<: *agent-env
+      AGENT_ID: accounting-manager
+      AGENT_ROLE: Accounting Manager
+      DEPARTMENT: accounting
+      REPORTS_TO: "ceo"
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-accounting-manager
+      PROMPT_FILE: /prompts/accounting/manager.yaml
+    depends_on:
+      mcp-proxy-accounting-manager: { condition: service_started }
+
+  mcp-proxy-accountant:
+    <<: *mcp-proxy
+    environment:
+      <<: *proxy-env
+      AGENT_ID: accountant
+
+  agent-accountant:
+    <<: *agent
+    network_mode: service:mcp-proxy-accountant
+    environment:
+      <<: *agent-env
+      AGENT_ID: accountant
+      AGENT_ROLE: Accountant
+      DEPARTMENT: accounting
+      REPORTS_TO: "accounting-manager"
+      AGENT_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/agentes-sas-local-accountant
+      PROMPT_FILE: /prompts/accounting/accountant.yaml
+    depends_on:
+      mcp-proxy-accountant: { condition: service_started }
+
+volumes:
+  tfdata:

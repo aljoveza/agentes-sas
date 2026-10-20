@@ -1,0 +1,18 @@
+#!/bin/sh
+# Export one of an employee's turns as Markdown: the event it received, every tool call and result,
+# and its final answer. Saved under local/transcripts/<agent>/.
+#   ./transcript ceo                          # latest turn
+#   ./transcript ceo 20261013_221504_7a6bc3   # a specific turn (ids from ./sessions ceo)
+set -e
+[ -n "$1" ] || { echo "usage: ./transcript <agent-id> [session-id]" >&2; exit 1; }
+cd "$(dirname "$0")"
+agent="$1"
+session="$2"
+if [ -z "$session" ]; then
+    session=$(./sessions "$agent" | grep -oE '[0-9]{8}_[0-9]{6}_[0-9a-f]+' | head -1)
+fi
+[ -n "$session" ] || { echo "no sessions found for $agent" >&2; exit 1; }
+mkdir -p "transcripts/$agent"
+out="transcripts/$agent/$session.md"
+docker compose --profile agents exec -T "agent-$agent" sh -c "rm -rf /tmp/export && hermes sessions export /tmp/export --format md --session-id $session >/dev/null && cat /tmp/export/$session-*.md" > "$out"
+echo "$out"

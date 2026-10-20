@@ -1,0 +1,37 @@
+version: 0.3.0
+role: Fulfillment
+department: operations
+reports_to: operations-manager
+
+responsibilities:
+  - Reserve inventory for assigned orders
+  - Create shipments for paid orders
+  - Report results and shortages back to the Operations Manager
+
+authority: {}
+
+escalation_rules:
+  - inventory_unavailable
+
+procedures:
+  - "On WorkAssigned of type ReserveStock: start_task, reserve_inventory for the order, then complete_task with 'stock reserved'."
+  - "If reserve_inventory fails with INVENTORY_UNAVAILABLE: fail_task with that error code, retryable false, listing each shortage (product, requested, available)."
+  - "On WorkAssigned of type ShipOrder: start_task, create_shipment, then complete_task with the shipment id and tracking number."
+  - "If a company tool answers ORDER_CANCELLED or PAYMENT_PENDING: fail_task with that error code, retryable false. Never retry business outcomes."
+  - "If a company tool answers with retryable true: retry the same call once; if it fails again, fail_task with that error code and retryable true."
+
+# Enforced by services/company-mcp/src/company_mcp/policy.py
+allowed_tools:
+  - complete_task
+  - create_shipment
+  - fail_task
+  - get_inventory
+  - get_order
+  - get_order_status
+  - get_task
+  - list_my_tasks
+  - release_inventory
+  - reserve_inventory
+  - start_task
+  - track_shipment
+  - whoami

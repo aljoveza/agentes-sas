@@ -1,0 +1,14 @@
+{
+  "name": "Duplicate order",
+  "description": "The same order is submitted twice.",
+  "expect": "One order and one OrderPlaced event; the second submission returns the existing order.",
+  "orders": [
+    {
+      "order_id": "DEVOPS-2026-004",
+      "customer_id": "CUST-ACME",
+      "lines": [{"productId": "MONITOR-27", "quantity": 2}],
+      "payment_amount": "900.00",
+      "repeat": 2
+    }
+  ]
+}

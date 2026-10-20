@@ -1,0 +1,20 @@
+[project]
+name = "nexo"
+version = "0.1.0"
+description = "Nexo: the demo store and live company view for the agentes-sas agent company."
+requires-python = ">=3.13"
+dependencies = [
+    "order-simulator",
+]
+
+[dependency-groups]
+dev = ["pytest>=9.1"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+order-simulator = { path = "../order-simulator" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

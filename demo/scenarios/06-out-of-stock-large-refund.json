@@ -1,0 +1,18 @@
+{
+  "name": "Out of stock, large refund",
+  "description": "Stark Industries orders 12 laptops; there are at most 10. The order is cancelled and, if already paid, the 36,000 refund exceeds accounting authority.",
+  "expect": "INVENTORY_UNAVAILABLE \u2192 OrderCancelled by Operations. If the payment was registered first: the Accounting Manager requests a REFUND decision, the CEO approves it (order cancelled and paid), and the accountant refunds 36,000.00. Stock and the invoice are restored/voided by the cancellation.",
+  "orders": [
+    {
+      "order_id": "DEVOPS-2026-006",
+      "customer_id": "CUST-STARK",
+      "lines": [
+        {
+          "productId": "LAPTOP-PRO",
+          "quantity": 12
+        }
+      ],
+      "payment_amount": "36000.00"
+    }
+  ]
+}

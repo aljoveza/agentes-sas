@@ -1,0 +1,18 @@
+#!/bin/sh
+# Order simulator against the local stack.
+#   ./sim run 01            # demo/scenarios/01-*.json
+#   ./sim run 02 --run-id 3 # replay with new order ids (DEVOPS-2026-002-R3)
+#   ./sim trace DEVOPS-2026-001
+set -e
+root="$(cd "$(dirname "$0")/.." && pwd)"
+if [ "$1" = "run" ] && [ -n "$2" ] && [ ! -f "$2" ]; then
+    match=$(ls "$root"/demo/scenarios/"$2"*.json 2>/dev/null | head -1)
+    [ -n "$match" ] || { echo "no scenario matching $2 in demo/scenarios" >&2; exit 1; }
+    shift 2
+    set -- run "$match" "$@"
+fi
+export COMPANY_MCP_URL=http://localhost:8080/mcp SIMULATOR_AUTH=header
+export AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://localhost:4566
+export TABLE_NAME=agentes-sas-local-company AUDIT_LOG_GROUP=/aws/events/agentes-sas-local-business
+unset AWS_SESSION_TOKEN AWS_PROFILE
+exec uv run --quiet --project "$root/services/order-simulator" order-simulator "$@" 2>&1 | grep -v -e "UserWarning" -e '"string": lambda'

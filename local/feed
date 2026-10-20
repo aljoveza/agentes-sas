@@ -1,0 +1,16 @@
+#!/bin/sh
+# Live feed of the company: every Company MCP tool call plus each employee's turns.
+#   ./feed             follow from now
+#   ./feed --all       replay everything so far, then follow
+#   ./feed --since 10m replay the last 10 minutes, then follow
+set -e
+cd "$(dirname "$0")"
+case "$1" in
+    --all) since="" ;;
+    --since) since="--since=$2" ;;
+    *) since="--since=0s" ;;
+esac
+docker compose --profile agents logs -f --no-log-prefix $since \
+    company-mcp agent-ceo agent-commercial-manager agent-sales-rep agent-operations-manager \
+    agent-fulfillment agent-accounting-manager agent-accountant 2>/dev/null \
+  | python3 -u feed.py

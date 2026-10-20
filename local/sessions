@@ -1,0 +1,8 @@
+#!/bin/sh
+# List an employee's turns (Hermes sessions), newest first.
+#   ./sessions ceo
+set -e
+[ -n "$1" ] || { echo "usage: ./sessions <agent-id>   e.g. ./sessions ceo" >&2; exit 1; }
+cd "$(dirname "$0")"
+docker compose --profile agents exec -T "agent-$1" sh -c 'COLUMNS=160 hermes sessions list --limit "${2:-20}" 2>/dev/null || COLUMNS=160 hermes sessions list' \
+  | sed 's/\x1b\[[0-9;]*m//g'

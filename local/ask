@@ -1,0 +1,10 @@
+#!/bin/sh
+# Ask an employee one question and print its answer (non-interactive).
+#   ./ask ceo "What decisions are pending?"
+#   ./ask ceo "Why did you approve this?" --resume 20261013_221504_7a6bc3   # in the context of that turn
+# The employee keeps its real tools: phrase questions as questions, not instructions.
+set -e
+[ -n "$2" ] || { echo "usage: ./ask <agent-id> \"question\" [--resume <session-id>]" >&2; exit 1; }
+cd "$(dirname "$0")"
+agent="$1"; question="$2"; shift 2
+docker compose --profile agents exec -T "agent-$agent" hermes -z "$question" --yolo "$@" 2>&1 | grep -v '^↪ restored'

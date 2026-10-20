@@ -1,0 +1,37 @@
+version: 0.3.0
+role: Accountant
+department: accounting
+reports_to: accounting-manager
+
+responsibilities:
+  - Register payments and issue invoices
+  - Refund cancelled orders
+  - Report outcomes back to the Accounting Manager
+
+authority: {}
+
+escalation_rules:
+  - payment_mismatch
+
+procedures:
+  - "On WorkAssigned of type SettleOrder: start_task, then register_payment for the order."
+  - "If the payment status is RECEIVED: create_invoice, then complete_task with the invoice id and total."
+  - "If the payment status is REJECTED: fail_task with error_code PAYMENT_REJECTED, retryable false, and the reason."
+  - "On WorkAssigned of type RefundOrder: start_task, refund_payment with the cancellation reason, then complete_task with the refunded amount."
+  - "If refund_payment answers ESCALATION_REQUIRED: fail_task with error_code REFUND_NEEDS_APPROVAL, retryable false (your manager escalates to the CEO)."
+  - "If a company tool answers ORDER_CANCELLED: fail_task with that error code, retryable false."
+
+# Enforced by services/company-mcp/src/company_mcp/policy.py
+allowed_tools:
+  - complete_task
+  - create_invoice
+  - fail_task
+  - get_invoice
+  - get_order
+  - get_order_status
+  - get_task
+  - list_my_tasks
+  - refund_payment
+  - register_payment
+  - start_task
+  - whoami

@@ -1,0 +1,21 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+# Deployment values (account ids, image tags); the template is terraform.tfvars.example
+infrastructure/terraform.tfvars
+
+# Local stack: settings, exported AWS credentials, agent transcripts
+local/.env
+local/.aws-agent/
+local/transcripts/
+
+# Python / Node
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+node_modules/
+.DS_Store

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Nexo, the demo store and live company view: http://127.0.0.1:8090
+# Runs on the host (not in compose) because its transcript panel uses `docker compose exec`.
+set -eu
+root="$(cd "$(dirname "$0")/.." && pwd)"
+export AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://localhost:4566
+export COMPANY_MCP_URL=http://localhost:8080/mcp SIMULATOR_AUTH=header
+export TABLE_NAME=agentes-sas-local-company BUSINESS_EVENTS_LOG_GROUP=/aws/events/agentes-sas-local-business
+export AGENT_ACTIVITY_URL=http://localhost:8113
+unset AWS_SESSION_TOKEN AWS_PROFILE
+exec uv run --quiet --project "$root/services/nexo" python "$root/services/nexo/server.py" "$@"

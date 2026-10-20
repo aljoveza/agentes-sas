@@ -1,0 +1,18 @@
+{
+  "name": "Inventory failure",
+  "description": "3 USB-C docks when only 2 are in stock.",
+  "expect": "Fulfillment cannot reserve (only 2 docks) and fails its task with INVENTORY_UNAVAILABLE; the Operations Manager cancels the order with the shortage as the reason. If Accounting already registered the payment, OrderCancelled carries a refund due and the accountant refunds 540.00 (within accounting authority).",
+  "orders": [
+    {
+      "order_id": "DEVOPS-2026-003",
+      "customer_id": "CUST-ACME",
+      "lines": [
+        {
+          "productId": "DOCK-USB-C",
+          "quantity": 3
+        }
+      ],
+      "payment_amount": "540.00"
+    }
+  ]
+}

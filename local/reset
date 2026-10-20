@@ -1,0 +1,8 @@
+#!/bin/sh
+# Wipe the local company: containers, Terraform state and LocalStack data, together.
+# (Resetting only one of them leaves Terraform state and LocalStack out of sync.)
+set -e
+cd "$(dirname "$0")"
+docker compose --profile agents down -v
+lstk restart --non-interactive   # no persistence: a restart is a clean LocalStack
+echo "Local company reset. Start again with: docker compose up -d --build [--profile agents]"

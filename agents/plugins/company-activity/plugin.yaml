@@ -1,0 +1,7 @@
+name: company-activity
+version: "0.1.0"
+description: "Publishes this employee's activity (tool calls, delegation, escalation, decisions) to the agent-activity service (shown live in Nexo). Visual only: observes hooks, never blocks or transforms anything."
+author: "agentes-sas (based on teknium1/hermes-pixel-office, MIT)"
+hooks:
+  - pre_tool_call
+  - post_tool_call

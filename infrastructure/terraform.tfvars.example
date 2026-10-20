@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars. Use a Bedrock inference profile your account has access to.
+bedrock_model_id = "us.anthropic.<model-id>"
+
+# Optional: invoke Bedrock in another account (this one has no quota). The role must trust
+# the agents' task roles (agentes-sas-dev-<agent-id>); see aws-management's bedrock invoker.
+# bedrock_role_arn = "arn:aws:iam::<account-id>:role/<org>-bedrock-invoker"
+
+# linux/amd64 images (Express Mode runs X86_64 tasks), pushed to the ECR repositories
+# from the first apply.
+agent_image_tag          = "<git-sha>"
+company_mcp_image_tag    = "<git-sha>"
+agent_activity_image_tag = "<git-sha>"
+nexo_image_tag           = "<git-sha>"
+
+running = false

@@ -1,0 +1,13 @@
+{
+  "name": "Agent restart",
+  "description": "Place the order, then kill Fulfillment while it works on it (see local/README.md).",
+  "expect": "The restarted Fulfillment recovers its task from the company system; exactly one reservation and one shipment.",
+  "orders": [
+    {
+      "order_id": "DEVOPS-2026-005",
+      "customer_id": "CUST-ACME",
+      "lines": [{"productId": "MONITOR-27", "quantity": 4}],
+      "payment_amount": "1800.00"
+    }
+  ]
+}

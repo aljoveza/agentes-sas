@@ -1,0 +1,14 @@
+{
+  "name": "CEO approval",
+  "description": "The customer asks for 25% off. The Commercial Manager may grant 10%, so the decision is escalated to the CEO.",
+  "expect": "DecisionRequested then DecisionApproved or DecisionRejected. If approved: validated at 25% and payment RECEIVED. If rejected: validated at 10% and payment REJECTED (the customer paid for 25% off).",
+  "orders": [
+    {
+      "order_id": "DEVOPS-2026-002",
+      "customer_id": "CUST-ACME",
+      "lines": [{"productId": "LAPTOP-PRO", "quantity": 3}],
+      "payment_amount": "6750.00",
+      "requested_discount_percent": "25"
+    }
+  ]
+}

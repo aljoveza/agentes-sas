@@ -1,0 +1,13 @@
+{
+  "name": "Happy path",
+  "description": "3 laptops for an enterprise customer, no discount. Commercial validates, then Operations and Accounting work in parallel.",
+  "expect": "Order VALIDATED; inventory reserved and shipment created; payment RECEIVED and invoice issued.",
+  "orders": [
+    {
+      "order_id": "DEVOPS-2026-001",
+      "customer_id": "CUST-ACME",
+      "lines": [{"productId": "LAPTOP-PRO", "quantity": 3}],
+      "payment_amount": "9000.00"
+    }
+  ]
+}

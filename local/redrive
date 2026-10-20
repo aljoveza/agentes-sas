@@ -1,0 +1,31 @@
+#!/bin/sh
+# Move dead-lettered events back into an employee's inbox so they are retried
+# (after fixing what made them fail, e.g. expired credentials).
+#   ./redrive commercial-manager
+#   ./redrive --all
+set -e
+[ -n "$1" ] || { echo "usage: ./redrive <agent-id> | --all" >&2; exit 1; }
+root="$(cd "$(dirname "$0")/.." && pwd)"
+export AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://localhost:4566
+unset AWS_SESSION_TOKEN AWS_PROFILE
+exec uv run --quiet --project "$root/services/order-simulator" python - "$1" <<'PY'
+import sys
+import boto3
+
+AGENTS = ["ceo", "commercial-manager", "sales-rep", "operations-manager", "fulfillment", "accounting-manager", "accountant"]
+sqs = boto3.client("sqs")
+agents = AGENTS if sys.argv[1] == "--all" else [sys.argv[1]]
+for agent in agents:
+    inbox = sqs.get_queue_url(QueueName=f"agentes-sas-local-{agent}")["QueueUrl"]
+    dlq = sqs.get_queue_url(QueueName=f"agentes-sas-local-{agent}-dlq")["QueueUrl"]
+    moved = 0
+    while True:
+        messages = sqs.receive_message(QueueUrl=dlq, MaxNumberOfMessages=10, WaitTimeSeconds=1).get("Messages", [])
+        if not messages:
+            break
+        for message in messages:
+            sqs.send_message(QueueUrl=inbox, MessageBody=message["Body"])
+            sqs.delete_message(QueueUrl=dlq, ReceiptHandle=message["ReceiptHandle"])
+            moved += 1
+    print(f"{agent}: {moved} event(s) moved back to the inbox")
+PY

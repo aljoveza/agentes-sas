@@ -1,0 +1,60 @@
+{
+  "mcpServers": {
+    "ceo": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "ceo"
+      }
+    },
+    "commercial-manager": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "commercial-manager"
+      }
+    },
+    "sales-rep": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "sales-rep"
+      }
+    },
+    "operations-manager": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "operations-manager"
+      }
+    },
+    "fulfillment": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "fulfillment"
+      }
+    },
+    "accounting-manager": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "accounting-manager"
+      }
+    },
+    "accountant": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "accountant"
+      }
+    },
+    "order-simulator": {
+      "type": "http",
+      "url": "http://company-mcp:8080/mcp",
+      "headers": {
+        "X-Agent-Id": "order-simulator"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Chat with an employee: same job description (SOUL.md), same company tools and identity, same model.
+#   ./talk ceo                                # new conversation
+#   ./talk ceo --resume 20261013_221504_7a6bc3 # continue the turn where it made a decision, and ask why
+# Careful: the employee keeps its real tools, so anything you ask it to *do* really happens.
+set -e
+[ -n "$1" ] || { echo "usage: ./talk <agent-id> [hermes options, e.g. --resume <session-id>]" >&2; exit 1; }
+cd "$(dirname "$0")"
+agent="$1"; shift
+exec docker compose --profile agents exec "agent-$agent" hermes "$@"
